@@ -1,2 +1,2 @@
 # SpeedKey
-Assembly project - SpeedKey
+Assembly school project - SpeedKey
