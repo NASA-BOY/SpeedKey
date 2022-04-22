@@ -12,8 +12,26 @@ home_pic	db 'Home.bmp',0
 home_a_u	db 'HomeKeyU.bmp',0
 home_a_d	db 'HomeKeyD.bmp',0
 
-home_key_x		dw 220
-home_key_y		dw 35
+; Init variables
+back_pic	db 'back_pic.bmp',0
+robot_pic	db 'robot.bmp',0
+line_pic	db 'line.bmp',0
+
+
+
+; CONSTANTS
+; Home
+home_key_x	dw 220
+home_key_y	dw 35
+
+; Init
+robot_x		dw 80
+robot_y		dw 126
+
+line_x		dw 0
+line_y		dw 185
+
+
 
 CODESEG
 start:
@@ -35,16 +53,13 @@ home_ani:
 	call home_key_ani
 	
 	; Check if a key was pressed without waiting
-	mov ah,0bh
-	int 21h
+	call MOR_GET_KEY
 	
 	cmp al, 0
 	je home_ani
 	
-	; Back to text mode
-	mov ah, 0
-	mov al, 2
-	int 10h
+	; Game init
+	call game_init
 	
 exit:
 	mov ax, 4c00h
@@ -84,7 +99,38 @@ proc home_key_ani
 	ret
 endp home_key_ani
 	
+
+;====================================================================
+;   PROC  –  game_init - Initiate the game for start
+;   IN: NONE
+;   OUT: NONE
+;	EFFECTED REGISTERS : NONE
+; ====================================================================
+
+proc game_init
+	pusha
 	
+	; Change the screen pic
+	mov ax, offset back_pic
+	call MOR_SCREEN
+	
+	; Line
+	mov cx, [line_x]
+	mov dx, [line_y]
+	
+	mov ax, offset line_pic
+	call MOR_LOAD_BMP
+	
+	; Robot
+	mov cx, [robot_x]
+	mov dx, [robot_y]
+	
+	mov ax, offset robot_pic
+	call MOR_LOAD_BMP
+	
+	popa
+	ret
+endp game_init	
 	
 	
 include "MOR_LIB.ASM"
