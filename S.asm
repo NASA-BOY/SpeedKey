@@ -17,7 +17,18 @@ back_pic	db 'back_pic.bmp',0
 robot_pic	db 'robot.bmp',0
 line_pic	db 'line.bmp',0
 
+; Keys images
+; TODO: when doing the check which key is pressed check if the ascii of the pressed key is bigger or equals to 97 ('a' ascii)
+; and if so substract less from the ascii value
+keys_pics	db '0.bmp', '1.bmp', '2.bmp', '3.bmp', '4.bmp', '5.bmp', '6.bmp', '7.bmp', '8.bmp', '9.bmp', 'a.bmp', 'b.bmp', 'c.bmp', 'd.bmp', 'e.bmp', 'f.bmp', 'g.bmp', 'h.bmp', 'i.bmp', 'j.bmp', 'k.bmp', 'l.bmp', 'm.bmp', 'n.bmp', 'o.bmp', 'p.bmp', 'q.bmp', 'r.bmp', 's.bmp', 't.bmp', 'u.bmp', 'v.bmp', 'w.bmp', 'x.bmp', 'y.bmp', 'z.bmp'
 
+; Keys coordinates
+keys_x		db 35
+keys_y		db 35
+
+; Loaded Keys index 
+keys_on		db 35
+keys_num 	db 0  ; Number of keys loaded
 
 ; CONSTANTS
 ; Home
@@ -131,6 +142,46 @@ proc game_init
 	popa
 	ret
 endp game_init	
+
+
+;====================================================================
+;   PROC  –  load_random_key - Load a random key to the screen
+;   IN: NONE
+;   OUT: NONE
+;	EFFECTED REGISTERS : NONE
+; ====================================================================
+
+proc load_random_key
+	pusha
+	
+	; Get random x coordinate
+	mov ax, 281
+	call MOR_RANDOM
+	add ax, 20
+	
+	mov cx, ax
+	mov dx, 20
+	
+	; Get a random key number to load
+	mov ax, 36
+	call MOR_RANDOM
+	
+	; Save the random key coordinates
+	mov [keys_x + ax], cx
+	mov [keys_y + ax], dx
+	
+	; Save the key's index in the keys array
+	mov bl, [keys_num]
+	mov [keys_on + bl], ax
+	inc [keys_num]
+	
+	; Load the key
+	mov ax, offset [keys_pics + ax]
+	call MOR_LOAD_BMP
+
+	popa
+	ret
+endp load_random_key
 	
 	
 include "MOR_LIB.ASM"
