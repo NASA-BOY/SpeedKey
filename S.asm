@@ -21,13 +21,14 @@ line_pic	db 'line.bmp',0
 ; TODO: when doing the check which key is pressed check if the ascii of the pressed key is bigger or equals to 97 ('a' ascii)
 ; and if so substract less from the ascii value
 keys_pics	db '0.bmp', '1.bmp', '2.bmp', '3.bmp', '4.bmp', '5.bmp', '6.bmp', '7.bmp', '8.bmp', '9.bmp', 'a.bmp', 'b.bmp', 'c.bmp', 'd.bmp', 'e.bmp', 'f.bmp', 'g.bmp', 'h.bmp', 'i.bmp', 'j.bmp', 'k.bmp', 'l.bmp', 'm.bmp', 'n.bmp', 'o.bmp', 'p.bmp', 'q.bmp', 'r.bmp', 's.bmp', 't.bmp', 'u.bmp', 'v.bmp', 'w.bmp', 'x.bmp', 'y.bmp', 'z.bmp'
+pic 		db '_',0
 
 ; Keys coordinates
-keys_x		db 35
-keys_y		db 35
+keys_x		db 36
+keys_y		db 36
 
 ; Loaded Keys index 
-keys_on		db 35
+keys_on		db 36
 keys_num 	db 0  ; Number of keys loaded
 
 ; CONSTANTS
@@ -164,7 +165,11 @@ proc load_random_key
 	
 	; Get a random key number to load
 	mov ax, 36
-	call MOR_RANDOM
+	call MOR_RANDOM	
+	
+	mov bx, ax
+	mov bl, [keys_pics + bx]
+	mov [pic], bl
 	
 	; Save the random key coordinates
 	mov [keys_x + ax], cx
@@ -176,7 +181,7 @@ proc load_random_key
 	inc [keys_num]
 	
 	; Load the key
-	mov ax, offset [keys_pics + ax]
+	mov ax, offset pic
 	call MOR_LOAD_BMP
 
 	popa
@@ -186,5 +191,3 @@ endp load_random_key
 	
 include "MOR_LIB.ASM"
 END start
-
-
