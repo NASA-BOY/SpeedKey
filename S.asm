@@ -20,16 +20,24 @@ line_pic	db 'line.bmp',0
 ; Keys images
 ; TODO: when doing the check which key is pressed check if the ascii of the pressed key is bigger or equals to 97 ('a' ascii)
 ; and if so substract less from the ascii value
-keys_pics	db '0.bmp', '1.bmp', '2.bmp', '3.bmp', '4.bmp', '5.bmp', '6.bmp', '7.bmp', '8.bmp', '9.bmp', 'a.bmp', 'b.bmp', 'c.bmp', 'd.bmp', 'e.bmp', 'f.bmp', 'g.bmp', 'h.bmp', 'i.bmp', 'j.bmp', 'k.bmp', 'l.bmp', 'm.bmp', 'n.bmp', 'o.bmp', 'p.bmp', 'q.bmp', 'r.bmp', 's.bmp', 't.bmp', 'u.bmp', 'v.bmp', 'w.bmp', 'x.bmp', 'y.bmp', 'z.bmp'
-pic 		db '_',0
+keys_pics	db '0', '1', '2', '3', '4', '5', '6', '7', '8', '9';, 'a.bmp', 'b.bmp', 'c.bmp', 'd.bmp', 'e.bmp', 'f.bmp', 'g.bmp', 'h.bmp', 'i.bmp', 'j.bmp', 'k.bmp', 'l.bmp', 'm.bmp', 'n.bmp', 'o.bmp', 'p.bmp', 'q.bmp', 'r.bmp', 's.bmp', 't.bmp', 'u.bmp', 'v.bmp', 'w.bmp', 'x.bmp', 'y.bmp', 'z.bmp'
+pic 		db '_.bmp',0
+delete	db 'delete.bmp',0
 
 ; Keys coordinates
-keys_x		db 36
-keys_y		db 36
+keys_x		dw 10 ;replace with 36 later
+keys_y		dw 10 ;replace with 36 later
+y_jump		db 8 ; The Y pixel jump amount of every key
 
 ; Loaded Keys index 
-keys_on		db 36
+keys_on		db 10 ;replace with 36 later
 keys_num 	db 0  ; Number of keys loaded
+
+; Number of keys killed
+keys_kill	db 0
+
+; General variables
+counter		db 0
 
 ; CONSTANTS
 ; Home
@@ -70,8 +78,33 @@ home_ani:
 	cmp al, 0
 	je home_ani
 	
+	
 	; Game init
 	call game_init
+	
+	; Load a random key
+	call load_random_key
+	
+	
+	; Start a stopper for the keys jump every x time
+	call MOR_STOPPER_START
+	
+	; Main Game Loop
+main:
+
+	call MOR_STOPPER_GET
+	cmp ax, 1
+	jne no_jump
+	
+jump_keys:
+	call keys_fall
+	call MOR_STOPPER_START
+	
+no_jump:
+	
+	
+	; Loop
+	jmp main
 	
 exit:
 	mov ax, 4c00h
@@ -164,7 +197,7 @@ proc load_random_key
 	mov dx, 20
 	
 	; Get a random key number to load
-	mov ax, 36
+	mov ax, 10 ;replace with 36 later
 	call MOR_RANDOM	
 	
 	mov bx, ax
@@ -172,12 +205,14 @@ proc load_random_key
 	mov [pic], bl
 	
 	; Save the random key coordinates
-	mov [keys_x + ax], cx
-	mov [keys_y + ax], dx
+	mov bx, ax
+	mov [keys_x + bx], cx
+	mov [keys_y + bx], dx
 	
 	; Save the key's index in the keys array
 	mov bl, [keys_num]
-	mov [keys_on + bl], ax
+	mov bh, 0
+	mov [keys_on + bx], al
 	inc [keys_num]
 	
 	; Load the key
@@ -187,6 +222,59 @@ proc load_random_key
 	popa
 	ret
 endp load_random_key
+
+
+
+;====================================================================
+;   PROC  –  keys_fall - make the keys fall
+;   IN: NONE
+;   OUT: NONE
+;	EFFECTED REGISTERS : NONE
+; ====================================================================
+
+proc keys_fall
+	pusha
+	
+	; Init
+	mov [counter], 0
+	mov bh, 0
+fall:
+	mov bl, [counter]
+	; Move the key index to bx
+	mov bl, [keys_on + bx]
+	
+	; Load a blank pic to delete the key
+	mov cx, [keys_x + bx]
+	mov dx, [keys_y + bx]
+	
+	mov ax, offset delete
+	call MOR_LOAD_BMP
+	
+	; Increase the key y value for fall effect
+	mov ah, 0
+	mov al, [y_jump]
+	add [keys_y + bx], ax
+	
+	; Load the key back but with higher y (affter fall)
+	mov dx, [keys_y + bx]
+	
+	mov bl, [keys_pics + bx]
+	mov [pic], bl
+	
+	mov ax, offset pic
+	call MOR_LOAD_BMP
+	
+	inc [counter]
+	
+	; The loop will run for the amout of keys on screen
+	mov al, [counter]
+	cmp [keys_num], al
+	jne fall
+	
+
+	popa
+	ret
+endp keys_fall
 	
 	
 include "MOR_LIB.ASM"
