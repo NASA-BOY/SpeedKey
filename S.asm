@@ -22,15 +22,15 @@ line_pic	db 'line.bmp',0
 ; and if so substract less from the ascii value
 keys_pics	db '0', '1', '2', '3', '4', '5', '6', '7', '8', '9';, 'a.bmp', 'b.bmp', 'c.bmp', 'd.bmp', 'e.bmp', 'f.bmp', 'g.bmp', 'h.bmp', 'i.bmp', 'j.bmp', 'k.bmp', 'l.bmp', 'm.bmp', 'n.bmp', 'o.bmp', 'p.bmp', 'q.bmp', 'r.bmp', 's.bmp', 't.bmp', 'u.bmp', 'v.bmp', 'w.bmp', 'x.bmp', 'y.bmp', 'z.bmp'
 pic 		db '_.bmp',0
-delete	db 'delete.bmp',0
+key_del		db 'delete.bmp',0
 
 ; Keys coordinates
-keys_x		dw 10 ;replace with 36 later
-keys_y		dw 10 ;replace with 36 later
+keys_x		dw 0,0,0,0,0,0,0,0,0,0 ;replace with 36 later
+keys_y		dw 0,0,0,0,0,0,0,0,0,0 ;replace with 36 later
 y_jump		db 8 ; The Y pixel jump amount of every key
 
 ; Loaded Keys index 
-keys_on		db 10 ;replace with 36 later
+keys_on		db 0,0,0,0,0,0,0,0,0,0 ;replace with 36 later
 keys_num 	db 0  ; Number of keys loaded
 
 ; Number of keys killed
@@ -85,6 +85,10 @@ home_ani:
 	; Load a random key
 	call load_random_key
 	
+	call load_random_key
+	
+	call load_random_key
+	
 	
 	; Start a stopper for the keys jump every x time
 	call MOR_STOPPER_START
@@ -94,7 +98,7 @@ main:
 
 	call MOR_STOPPER_GET
 	cmp ax, 1
-	jne no_jump
+	jb no_jump
 	
 jump_keys:
 	call keys_fall
@@ -196,11 +200,16 @@ proc load_random_key
 	mov cx, ax
 	mov dx, 20
 	
+random:
 	; Get a random key number to load
 	mov ax, 10 ;replace with 36 later
 	call MOR_RANDOM	
 	
+	; Check if the key is already on screen and get random key again if it is
 	mov bx, ax
+	cmp [keys_on + bx], 1
+	je random
+	
 	mov bl, [keys_pics + bx]
 	mov [pic], bl
 	
@@ -209,10 +218,10 @@ proc load_random_key
 	mov [keys_x + bx], cx
 	mov [keys_y + bx], dx
 	
-	; Save the key's index in the keys array
-	mov bl, [keys_num]
-	mov bh, 0
-	mov [keys_on + bx], al
+	; Change the key index in the keys on array to 1
+	mov [keys_on + bx], 1
+	; mov ah,0
+	; call MOR_PRINT_NUM
 	inc [keys_num]
 	
 	; Load the key
@@ -237,39 +246,46 @@ proc keys_fall
 	
 	; Init
 	mov [counter], 0
-	mov bh, 0
 fall:
+	mov bx, 0
 	mov bl, [counter]
 	; Move the key index to bx
-	mov bl, [keys_on + bx]
-	
+	cmp [keys_on + bx], 0
+	je after_fall
+
 	; Load a blank pic to delete the key
 	mov cx, [keys_x + bx]
 	mov dx, [keys_y + bx]
 	
-	mov ax, offset delete
+	mov ax, offset key_del
 	call MOR_LOAD_BMP
 	
 	; Increase the key y value for fall effect
-	mov ah, 0
+	mov ax, 0
 	mov al, [y_jump]
 	add [keys_y + bx], ax
 	
 	; Load the key back but with higher y (affter fall)
 	mov dx, [keys_y + bx]
 	
-	mov bl, [keys_pics + bx]
-	mov [pic], bl
+	; mov ax, bx
+	; call MOR_PRINT_NUM
+	mov ax,0
+	mov al, [keys_pics + bx]
+	mov [pic], al
+	
 	
 	mov ax, offset pic
 	call MOR_LOAD_BMP
 	
+after_fall:
+	
 	inc [counter]
 	
 	; The loop will run for the amout of keys on screen
-	mov al, [counter]
-	cmp [keys_num], al
-	jne fall
+	mov al, 10 ;change to 36
+	cmp [counter], al
+	jb fall
 	
 
 	popa
