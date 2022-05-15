@@ -1,6 +1,8 @@
 ;  MOR_LIB  -  written by Oren Gross
 ;
 ; 15.5.20- stopper added : MOR_STOPPER_START + MOR_STOPPER_GET
+; added 
+; 27.2.2022 - additions draw-Pixel,Line,Rect + putMessage
 
 Clock  	  equ es:6Ch ; BIOS 55 msec ticks counter
 
@@ -30,10 +32,96 @@ const_225  dw 225
 const_4096 dw 4096
 ScrLine db 320 dup (0)
 ErrorMsg1 db 'Error in opening file : $'
-ErrorMsg2 db 13, 10,'1) Check if file exist', 13, 10,'2) Check if its name is correct.', 13, 10,'$'
+ErrorMsg2 db 13, 10,'1) Check if file exist', 13, 10,'2) Check if its name is correct.', 13, 10,'3) Check file is BMP-256 colors format.', 13, 10,'4) Check if filename is in 8.3 format .', 13, 10,'$'
 stopper dw ?
 
 CODESEG
+
+;==============================================
+;   drawPixel  – draw a pixel at  X,Y  
+;   IN: CX=X  , DX =Y , AL = COLOR 
+;   OUT:  NONE
+;	AFFECTED REGISTERS AND VARIABLES: NONE
+; ==============================================
+proc drawPixel 
+	PUSHA 
+	mov bh,0
+	mov ah,0ch
+	int 10h
+	POPA
+	ret 
+endp
+
+
+;==============================================
+;   drawLine  – draw a line starting at  X,Y  
+;   IN: CX=X  , DX =Y , AL = COLOR , AH = WIDTH
+;   OUT:  NONE
+;	AFFECTED REGISTERS AND VARIABLES: NONE
+; ==============================================
+proc drawLine 
+	PUSHA 
+	mov bl,ah ; loop counter (cause ah is needed)
+	mov bh,0
+	mov ah,0ch
+ONE_PIXEL	:
+	int 10h
+	inc cx
+	dec bl
+	jnz ONE_PIXEL
+	POPA
+	ret 
+endp
+
+
+;==============================================
+;   drawRect  – draw a rectangle starting at  X,Y  
+;   IN: CX=X  , DX =Y , AL = COLOR , AH = WIDTH , BL = HIGHT 
+;   OUT:  NONE
+;	AFFECTED REGISTERS AND VARIABLES: NONE
+; ==============================================
+
+proc drawRect 
+	PUSHA 
+ONE_LINE	:
+    call drawLine  ; IN: CX=X  , DX =Y , AL = COLOR , AH = WIDTH 
+	inc dx
+	dec bl
+	jnz ONE_LINE
+	POPA
+	ret 
+endp
+
+	
+
+
+
+
+;==============================================
+;   putMessage  - print message on screen
+;   IN: DH= row number  , DL = column number  , cx = the message (offset)
+;   OUT:  NONE
+;	AFFECTED REGISTERS AND VARIABLES: NONE
+; ==============================================
+
+proc putMessage
+	pusha
+
+	; set cursor position acording to dh dl
+	MOV AH, 2       ; set cursor position
+	MOV BH, 0       ; display page number
+	INT 10H         ; video BIOS call
+	
+	; print msg
+	mov dx,cx
+	mov ah,9
+	int 21h
+
+	popa
+	ret
+endp 
+
+
 
 Proc MOR_SLEEP
 ;DO : sleep and return after AX mili second
@@ -291,16 +379,20 @@ openerror:
 	mov ah, 9h
 	int 21h
 
-	; print first 10 chars
-	mov cx,10
+	; print max 50  chars
+	mov cx,50 
 	pop bx
 
 char1:
     mov dl,[bx]
+	cmp dl,'$'
+	je filename_end
 	mov ah,2
 	int 21h
 	inc bx
 	loop char1
+
+filename_end:
 
 	mov dx, offset ErrorMsg2
 	mov ah, 9h
