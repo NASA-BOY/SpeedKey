@@ -27,6 +27,7 @@ key_del		db 'delete.bmp',0
 ; Keys coordinates
 keys_x		dw 10 dup (0)
 keys_y		dw 10 dup (0)
+prev_x		dw 0 ; The random x value will be saved here so the next key wont be loaded on the previous one 
 y_jump		db 2 ; The Y pixel jump amount of every key
 y_fail		dw 170 ;The Y value that if a key reaches the player fails
 
@@ -215,8 +216,10 @@ proc load_random_key
 	call MOR_RANDOM
 	add ax, 20
 	
+	call check_x_diff
+	
 	mov cx, ax
-	mov dx, 20
+	mov dx, 15
 	
 random:
 	; Get a random key number to load
@@ -238,6 +241,9 @@ random:
 	mov [keys_x + bx], cx
 	mov [keys_y + bx], dx
 	
+	; Save the x value for next load
+	mov [prev_x], cx
+	
 	; Change the key index in the keys on array to 1
 	mov [keys_on + bx], 70
 	; mov ah,0
@@ -254,6 +260,57 @@ after_load:
 	ret
 endp load_random_key
 
+
+;====================================================================
+;   PROC  –  check_x_diff - Check if the substracte of the new key and previous one is too small and if so return a fixed x value
+;   IN: ax - the current key x value
+;   OUT: ax - the fixed x value
+;	EFFECTED REGISTERS AND VARIABLES : ax
+; ====================================================================
+
+proc check_x_diff
+	push cx
+	push bx
+	push dx
+	
+	; If the prev is bigger than do prev - ax else do ax - prev
+	cmp [prev_x], ax
+	ja prev_bigger
+	
+	; ax is bigger
+	mov bx, ax
+	sub bx, [prev_x]
+	cmp bx, 20
+	jb add_x
+	jmp after_fix
+	
+add_x:
+	cmp ax, 280
+	ja dec_x
+	add ax, 20
+	jmp after_fix
+	
+prev_bigger:
+	mov bx, [prev_x]
+	sub bx, ax
+	cmp bx, 20
+	jb dec_x
+	jmp after_fix
+	
+	
+dec_x:
+	cmp ax, 40
+	jb add_x
+	sub ax, 20
+
+after_fix:
+
+	
+	pop cx
+	pop bx
+	pop dx
+	ret
+endp check_x_diff
 
 
 ;====================================================================
