@@ -17,6 +17,13 @@ back_pic	db 'back_pic.bmp',0
 ; robot_pic	db 'robot.bmp',0
 line_pic	db 'line.bmp',0
 
+; Game over variables
+over_back	db 'over_bac.bmp', 0
+over_txt	db 'over_txt.bmp', 0
+txt_blank	db 'txt_blan.bmp', 0
+txt_y		dw 120
+txt_x		dw 40
+
 ; Keys images
 ; TODO: when doing the check which key is pressed check if the ascii of the pressed key is bigger or equals to 97 ('a' ascii)
 ; and if so substract less from the ascii value
@@ -29,7 +36,9 @@ keys_x		dw 10 dup (0)
 keys_y		dw 10 dup (0)
 prev_x		dw 0 ; The random x value will be saved here so the next key wont be loaded on the previous one 
 y_jump		db 2 ; The Y pixel jump amount of every key
-y_fail		dw 170 ;The Y value that if a key reaches the player fails
+y_fail		dw 170 ; The Y value that if a key reaches the player fails
+
+fall_delay	dw 200 ; The delay between each fall
 
 ; Loaded Keys index 
 keys_on		dw 10 dup (0) ;replace with 36 later
@@ -41,6 +50,7 @@ score		dw 0
 ; General variables
 counter		db 0
 timer		db 0
+fail		db 0 ; Turns 1 if the player has failed and the game is over
 
 ; CONSTANTS
 ; Home
@@ -65,7 +75,7 @@ start:
 	; Graphic mode
 	mov ax, 13h
 	int 10h
-	
+		
 	; ==Home page==
 	; Change the screen pic
 	mov ax, offset home_pic
@@ -81,6 +91,7 @@ home_ani:
 	cmp al, 0
 	je home_ani
 	
+play_again:	
 	
 	; Game init
 	call game_init
@@ -101,9 +112,9 @@ main:
 	mov ax, [score]
 	call MOR_PRINT_NUM
 	
-	
 
 	call check_press
+	
 	mov al, [timer]
 	cmp al, 5
 	jb no_load
@@ -114,15 +125,64 @@ main:
 	mov [timer], 0
 	
 no_load:
-	mov ax, 200
+	mov ax, [fall_delay]
 	call MOR_SLEEP
 	
 	inc [timer]
 	
 	CALL keys_fall
 	
-	; Loop
-	jmp main
+	; Loop only if the player hasn't failed
+	cmp [fail], 0
+	je main
+	
+	mov ax, 1000
+	call MOR_SLEEP
+	
+	; If the player fails and the game is over
+	
+	; Change the screen pic
+	mov ax, offset over_back
+	call MOR_SCREEN
+	
+	; Print the score
+	mov dl, 19
+	mov dh, 4
+	; set cursor position acording to dh dl
+	MOV AH, 2       ; set cursor position
+	MOV BH, 0       ; display page number
+	INT 10H         ; video BIOS call
+	
+	mov ax, [score]
+	call MOR_PRINT_NUM
+	
+	mov cx, [txt_x]
+	mov dx, [txt_y]
+	
+game_over:
+	
+	mov ax, offset over_txt
+	call MOR_LOAD_BMP
+	
+	mov ax, 500
+	call MOR_SLEEP
+	
+	mov ax, offset txt_blank
+	call MOR_LOAD_BMP
+	
+	mov ax, 500
+	call MOR_SLEEP
+	
+	; Check if a key was pressed without waiting
+	mov ax, 0
+	
+	call MOR_GET_KEY
+	cmp al, 0
+	je game_over
+	
+	; Reset the variables and start again
+	call reset_vars
+	jmp play_again
 	
 exit:
 	mov ax, 4c00h
@@ -167,7 +227,7 @@ endp home_key_ani
 ;   PROC  –  game_init - Initiate the game for start
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS : NONE
+;	EFFECTED REGISTERS AND VARIABLES : NONE
 ; ====================================================================
 
 proc game_init
@@ -193,7 +253,76 @@ proc game_init
 	
 	popa
 	ret
-endp game_init	
+endp game_init
+
+
+;====================================================================
+;   PROC  –  reset_vars - reset the changed variables for another run
+;   IN: NONE
+;   OUT: NONE
+;	EFFECTED REGISTERS AND VARIABLES : NONE
+; ====================================================================
+
+proc reset_vars
+	pusha
+	
+	mov [score], 0
+	mov [keys_num], 0
+	mov [fail], 0
+	mov [timer], 0
+	mov [fall_delay], 200
+	mov [y_jump], 2
+	
+	; Reset the arrays using a loop
+	mov bx, 0
+arr_reset:
+	mov [keys_on+bx], 0
+	mov [keys_x+bx], 0
+	mov [keys_y+bx], 0
+	
+	add bx, 2
+	
+	cmp bx, 20
+	jb arr_reset
+	
+	
+	popa
+	ret
+endp reset_vars
+
+
+;====================================================================
+;   PROC  –  speed_calc - calculate the fall spee dbased on the score
+;   IN: NONE
+;   OUT: NONE
+;	EFFECTED REGISTERS AND VARIABLES : fall_delay - will decrease more the higher the score, y_jump - if the score hits 69 the y jump is set to 4
+; ====================================================================
+
+proc speed_calc
+	pusha
+	
+	; If the score is 47 the delay will be 59 and 55 is the min delay so jmp to min delay to stop decreasing
+	cmp [score], 47
+	ja min_delay
+	
+	sub [fall_delay], 3
+	
+min_delay:
+	;if the score hits 69 the y jump is set to 4
+	cmp [score], 69
+	je impossible
+	jmp normal
+	
+
+impossible:
+	mov [y_jump], 4
+	
+normal:
+
+	
+	popa
+	ret
+endp speed_calc
 
 
 ;====================================================================
@@ -229,7 +358,7 @@ random:
 	; Check if the key is already on screen and get random key again if it is
 	mov bx, ax
 	add bx, bx
-	cmp [keys_on + bx], 70
+	cmp [keys_on + bx], 1
 	je random
 	
 	mov bx, [keys_pics + bx]
@@ -245,7 +374,7 @@ random:
 	mov [prev_x], cx
 	
 	; Change the key index in the keys on array to 1
-	mov [keys_on + bx], 70
+	mov [keys_on + bx], 1
 	; mov ah,0
 	; call MOR_PRINT_NUM
 	inc [keys_num]
@@ -317,7 +446,7 @@ endp check_x_diff
 ;   PROC  –  keys_fall - make the keys fall
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS : NONE
+;	EFFECTED REGISTERS  AND VARIABLES : fail - only if the player has failed
 ; ====================================================================
 
 proc keys_fall
@@ -357,11 +486,11 @@ fall:
 	
 	; Checks if the keys y is in the fail range and if so call game over
 	cmp dx, [y_fail]
-	jae fail
+	jae over
 	jmp after_fall
 	
-fail:
-	call game_over
+over:
+	mov [fail], 1
 	
 after_fall:
 	
@@ -393,6 +522,12 @@ endp keys_fall
 	cmp al, 0
 	je not_on
 	
+	cmp al, '0'
+	jb not_on
+	
+	cmp al, '9'
+	ja not_on
+	
 	sub al, 48
 	mov ah,0
 	
@@ -420,30 +555,15 @@ endp keys_fall
 	; Increase the score
 	inc [score]
 	
+	; Decrease the fall delay
+	call speed_calc
+	
 not_on:
 
 	
 	popa
 	ret
 endp check_press
-
-
-;====================================================================
-;   PROC  –  game_over - The game over screen
-;   IN: NONE
-;   OUT: NONE
-;	EFFECTED REGISTERS : NONE
-; ====================================================================
-
-proc game_over
-	pusha
-	
-	mov ax, 2
-	int 10h
-	
-	popa
-	ret
-endp game_over
 
 	
 include "MOR_LIB.ASM"
