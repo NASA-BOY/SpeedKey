@@ -136,9 +136,20 @@ no_load:
 	cmp [fail], 0
 	je main
 	
-	mov ax, 1000
+	
+	; Wait a bit before game over screen
+	; this code is like this to fix the bug that if you press before the game over screen  it skips it
+	mov [timer], 0
+fail_wait:
+	mov ax, 100
 	call MOR_SLEEP
 	
+	call MOR_GET_KEY
+	inc [timer]
+	
+	cmp [timer], 20
+	jb fail_wait
+
 	; If the player fails and the game is over
 	
 	; Change the screen pic
@@ -534,8 +545,9 @@ endp keys_fall
 	; Check if the key is on the screen
 	mov bx, ax
 	add bx, bx
+	; if wrong click then fail
 	cmp [keys_on + bx], 0
-	je not_on
+	je check_fail
 	
 	; Load a blank pic to delete the key
 	mov cx, [keys_x + bx]
@@ -558,9 +570,13 @@ endp keys_fall
 	; Decrease the fall delay
 	call speed_calc
 	
-not_on:
-
+	jmp not_on
 	
+check_fail:
+	mov [fail], 1
+		
+not_on:
+		
 	popa
 	ret
 endp check_press
