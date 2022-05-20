@@ -81,15 +81,9 @@ start:
 	mov ax, offset home_pic
 	call MOR_SCREEN
 	
-home_ani:
-	; Key animation
+	; Key animation and check any key
 	call home_key_ani
 	
-	; Check if a key was pressed without waiting
-	call MOR_GET_KEY
-	
-	cmp al, 0
-	je home_ani
 	
 play_again:	
 	
@@ -112,16 +106,14 @@ main:
 	mov ax, [score]
 	call MOR_PRINT_NUM
 	
-
 	call check_press
 	
-	mov al, [timer]
-	cmp al, 5
+	; Check if 5 * fall_delay has passed and if so load a random key
+	cmp [timer], 5
 	jb no_load
 	
 	; Load a key
 	call load_random_key
-	call MOR_STOPPER_START
 	mov [timer], 0
 	
 no_load:
@@ -136,63 +128,8 @@ no_load:
 	cmp [fail], 0
 	je main
 	
-	
-	; Wait a bit before game over screen
-	; this code is like this to fix the bug that if you press before the game over screen  it skips it
-	mov [timer], 0
-fail_wait:
-	mov ax, 100
-	call MOR_SLEEP
-	
-	call MOR_GET_KEY
-	inc [timer]
-	
-	cmp [timer], 20
-	jb fail_wait
+	call over_proc
 
-	; If the player fails and the game is over
-	
-	; Change the screen pic
-	mov ax, offset over_back
-	call MOR_SCREEN
-	
-	; Print the score
-	mov dl, 19
-	mov dh, 4
-	; set cursor position acording to dh dl
-	MOV AH, 2       ; set cursor position
-	MOV BH, 0       ; display page number
-	INT 10H         ; video BIOS call
-	
-	mov ax, [score]
-	call MOR_PRINT_NUM
-	
-	mov cx, [txt_x]
-	mov dx, [txt_y]
-	
-game_over:
-	
-	mov ax, offset over_txt
-	call MOR_LOAD_BMP
-	
-	mov ax, 500
-	call MOR_SLEEP
-	
-	mov ax, offset txt_blank
-	call MOR_LOAD_BMP
-	
-	mov ax, 500
-	call MOR_SLEEP
-	
-	; Check if a key was pressed without waiting
-	mov ax, 0
-	
-	call MOR_GET_KEY
-	cmp al, 0
-	je game_over
-	
-	; Reset the variables and start again
-	call reset_vars
 	jmp play_again
 	
 exit:
@@ -212,6 +149,8 @@ exit:
 proc home_key_ani
 	pusha
 	
+home_ani:
+
 	mov cx, [home_key_x]
 	mov dx, [home_key_y]
 	
@@ -228,6 +167,13 @@ proc home_key_ani
 	; wait
 	mov ax,700
 	call MOR_SLEEP
+	
+	mov al, 0
+	; Check if a key was pressed without waiting
+	call MOR_GET_KEY
+	
+	cmp al, 0
+	je home_ani
 	
 	popa
 	ret
@@ -319,7 +265,7 @@ proc speed_calc
 	sub [fall_delay], 3
 	
 min_delay:
-	;if the score hits 69 the y jump is set to 4
+	; If the score hits 69 the y jump is set to 4
 	cmp [score], 69
 	je impossible
 	jmp normal
@@ -580,6 +526,78 @@ not_on:
 	popa
 	ret
 endp check_press
+
+
+;====================================================================
+;   PROC  –  over_proc - The game over screen
+;   IN: NONE
+;   OUT: NONE
+;	EFFECTED REGISTERS AND VARIABLES : timer
+; ====================================================================
+
+proc over_proc
+	pusha
+	
+	; Wait a bit before game over screen
+	; this code is like this to fix the bug that if you press before the game over screen  it skips it
+	mov [timer], 0
+fail_wait:
+	mov ax, 100
+	call MOR_SLEEP
+	
+	call MOR_GET_KEY
+	inc [timer]
+	
+	cmp [timer], 20
+	jb fail_wait
+
+	; If the player fails and the game is over
+	
+	; Change the screen pic
+	mov ax, offset over_back
+	call MOR_SCREEN
+	
+	; Print the score
+	mov dl, 19
+	mov dh, 4
+	; set cursor position acording to dh dl
+	MOV AH, 2       ; set cursor position
+	MOV BH, 0       ; display page number
+	INT 10H         ; video BIOS call
+	
+	mov ax, [score]
+	call MOR_PRINT_NUM
+	
+	mov cx, [txt_x]
+	mov dx, [txt_y]
+	
+game_over:
+	
+	mov ax, offset over_txt
+	call MOR_LOAD_BMP
+	
+	mov ax, 500
+	call MOR_SLEEP
+	
+	mov ax, offset txt_blank
+	call MOR_LOAD_BMP
+	
+	mov ax, 500
+	call MOR_SLEEP
+	
+	; Check if a key was pressed without waiting
+	mov ax, 0
+	
+	call MOR_GET_KEY
+	cmp al, 0
+	je game_over
+	
+	; Reset the variables and start again
+	call reset_vars
+	
+	popa
+	ret
+endp over_proc
 
 	
 include "MOR_LIB.ASM"
