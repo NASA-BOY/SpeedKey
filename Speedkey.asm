@@ -21,7 +21,7 @@ line_pic	db 'line.bmp',0
 over_back	db 'over_bac.bmp', 0
 over_txt	db 'over_txt.bmp', 0
 txt_blank	db 'txt_blan.bmp', 0
-txt_y		dw 120
+txt_y		dw 90
 txt_x		dw 40
 
 ; Keys images
@@ -589,6 +589,12 @@ game_over:
 	mov ax, 0
 	
 	call MOR_GET_KEY
+	cmp al, 'q'
+	je exit
+	
+	cmp al, 'Q'
+	je exit
+	
 	cmp al, 0
 	je game_over
 	
