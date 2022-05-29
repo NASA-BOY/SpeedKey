@@ -217,7 +217,7 @@ endp game_init
 ;   PROC  –  reset_vars - reset the changed variables for another run
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS AND VARIABLES : NONE
+;	EFFECTED REGISTERS AND VARIABLES : score, keys_num, fail, timer, fall_delay, y_jump, keys_on, keys_x, keys_y - all to their original value
 ; ====================================================================
 
 proc reset_vars
@@ -286,13 +286,13 @@ endp speed_calc
 ;   PROC  –  load_random_key - Load a random key to the screen
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS : NONE
+;	EFFECTED REGISTERS AND VARIABLES: keys_num - inc by 1, prev_x, keys_on, keys_x, keys_y, pic - according to the number loaded
 ; ====================================================================
 
 proc load_random_key
 	pusha
 	
-	; Temp: check if all the keys are on
+	; Check if all the keys are on
 	mov al, 10
 	cmp [keys_num], al
 	je after_load
@@ -403,7 +403,7 @@ endp check_x_diff
 ;   PROC  –  keys_fall - make the keys fall
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS  AND VARIABLES : fail - only if the player has failed
+;	EFFECTED REGISTERS AND VARIABLES : fail - only if the player has failed, counter - by one each loop, keys_x, keys_y, pic - according to the number pressed
 ; ====================================================================
 
 proc keys_fall
@@ -468,7 +468,7 @@ endp keys_fall
 ;   PROC  –  check_press - check if the key pressed is on screen and if so deletes it
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS : NONE
+;	EFFECTED REGISTERS AND VARIABLES: score - inc if the clicked on the number on screen, keys_num - dec if the clicked on the number on screen, keys_on, keys_x, keys_y - according to the number pressed
 ; ====================================================================
 	proc check_press
 	pusha
@@ -532,7 +532,7 @@ endp check_press
 ;   PROC  –  over_proc - The game over screen
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS AND VARIABLES : timer
+;	EFFECTED REGISTERS AND VARIABLES : timer - inc by 1 every loop
 ; ====================================================================
 
 proc over_proc
