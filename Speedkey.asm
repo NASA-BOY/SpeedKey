@@ -37,6 +37,7 @@ keys_y		dw 10 dup (0)
 prev_x		dw 0 ; The random x value will be saved here so the next key wont be loaded on the previous one 
 y_jump		db 2 ; The Y pixel jump amount of every key
 y_fail		dw 170 ; The Y value that if a key reaches the player fails
+first_y		dw 15
 
 fall_delay	dw 200 ; The delay between each fall
 
@@ -305,7 +306,7 @@ proc load_random_key
 	call check_x_diff
 	
 	mov cx, ax
-	mov dx, 15
+	mov dx, [first_y]
 	
 random:
 	; Get a random key number to load
