@@ -1,4 +1,5 @@
-; ==========SPEEDKEY by ITAY==========
+; ========== SPEEDdigit by ~ITAY OLIEL~ ==========
+
 IDEAL
 MODEL small
 jumps
@@ -14,7 +15,6 @@ home_a_d	db 'HomeKeyD.bmp',0
 
 ; Init variables
 back_pic	db 'back_pic.bmp',0
-; robot_pic	db 'robot.bmp',0
 line_pic	db 'line.bmp',0
 
 ; Game over variables
@@ -24,34 +24,32 @@ txt_blank	db 'txt_blan.bmp', 0
 txt_y		dw 90
 txt_x		dw 40
 
-; Keys images
-; TODO: when doing the check which key is pressed check if the ascii of the pressed key is bigger or equals to 97 ('a' ascii)
-; and if so substract less from the ascii value
-keys_pics	dw '0', '1', '2', '3', '4', '5', '6', '7', '8', '9';, 'a.bmp', 'b.bmp', 'c.bmp', 'd.bmp', 'e.bmp', 'f.bmp', 'g.bmp', 'h.bmp', 'i.bmp', 'j.bmp', 'k.bmp', 'l.bmp', 'm.bmp', 'n.bmp', 'o.bmp', 'p.bmp', 'q.bmp', 'r.bmp', 's.bmp', 't.bmp', 'u.bmp', 'v.bmp', 'w.bmp', 'x.bmp', 'y.bmp', 'z.bmp'
+; digits images
+digits_pics	dw '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
 pic 		db '_.bmp',0
-key_del		db 'delete.bmp',0
+digit_del		db 'delete.bmp',0
 
-; Keys coordinates
-keys_x		dw 10 dup (0)
-keys_y		dw 10 dup (0)
-prev_x		dw 0 ; The random x value will be saved here so the next key wont be loaded on the previous one 
-y_jump		db 2 ; The Y pixel jump amount of every key
-y_fail		dw 170 ; The Y value that if a key reaches the player fails
+; digits coordinates
+digits_x	dw 10 dup (0) ; The X coordinate of each digit
+digits_y	dw 10 dup (0); The Y coordinate of each digit
+prev_x		dw 0 ; The random x value will be saved here so the next digit wont be loaded on top the previous one 
+y_jump		db 2 ; The Y pixel jump amount of every digit
+y_fail		dw 170 ; The Y value that if a digit reaches the player fails
 first_y		dw 15
 
 fall_delay	dw 200 ; The delay between each fall
 
-; Loaded Keys index 
-keys_on		dw 10 dup (0) ;replace with 36 later
-keys_num 	db 0  ; Number of keys loaded
+; Loaded digits index 
+digits_on		dw 10 dup (0) ; If a digit is loaded the its value in index will be 1
+digits_num 	db 0 ; Number of digits loaded
 
-; Number of keys killed
+; Number of digits destroyed
 score		dw 0
 
 ; General variables
 counter		db 0
 timer		db 0
-fail		db 0 ; Turns 1 if the player has failed and the game is over
+fail		db 0 ; Turns to 1 if the player has failed and the game is over
 
 ; CONSTANTS
 ; Home
@@ -82,7 +80,7 @@ start:
 	mov ax, offset home_pic
 	call MOR_SCREEN
 	
-	; Key animation and check any key
+	; digit animation and check any digit
 	call home_key_ani
 	
 	
@@ -91,7 +89,7 @@ play_again:
 	; Game init
 	call game_init
 	
-	call load_random_key
+	call load_random_digit
 
 	
 	; Main Game Loop
@@ -109,12 +107,12 @@ main:
 	
 	call check_press
 	
-	; Check if 5 * fall_delay has passed and if so load a random key
+	; Check if 5 * fall_delay has passed and if so load a random digit
 	cmp [timer], 5
 	jb no_load
 	
-	; Load a key
-	call load_random_key
+	; Load a digit
+	call load_random_digit
 	mov [timer], 0
 	
 no_load:
@@ -123,7 +121,7 @@ no_load:
 	
 	inc [timer]
 	
-	CALL keys_fall
+	CALL digits_fall
 	
 	; Loop only if the player hasn't failed
 	cmp [fail], 0
@@ -137,11 +135,11 @@ exit:
 	mov ax, 4c00h
 	int 21h
 	
-; ===================================PROCEDURES===================================
+; =================================== PROCEDURES ===================================
 
 
 ;====================================================================
-;   PROC  –  home_key_ani - Creats the key animation in the home screen
+;   PROC  –  home_key_ani - Creats the digit animation in the home screen
 ;   IN: NONE
 ;   OUT: NONE
 ;	EFFECTED REGISTERS : NONE
@@ -170,7 +168,7 @@ home_ani:
 	call MOR_SLEEP
 	
 	mov al, 0
-	; Check if a key was pressed without waiting
+	; Check if a digit was pressed without waiting
 	call MOR_GET_KEY
 	
 	cmp al, 0
@@ -202,13 +200,6 @@ proc game_init
 	mov ax, offset line_pic
 	call MOR_LOAD_BMP
 	
-	; ; Robot
-	; mov cx, [robot_x]
-	; mov dx, [robot_y]
-	
-	; mov ax, offset robot_pic
-	; call MOR_LOAD_BMP
-	
 	popa
 	ret
 endp game_init
@@ -218,14 +209,14 @@ endp game_init
 ;   PROC  –  reset_vars - reset the changed variables for another run
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS AND VARIABLES : score, keys_num, fail, timer, fall_delay, y_jump, keys_on, keys_x, keys_y - all to their original value
+;	EFFECTED REGISTERS AND VARIABLES : score, digits_num, fail, timer, fall_delay, y_jump, digits_on, digits_x, digits_y - all to their original value
 ; ====================================================================
 
 proc reset_vars
 	pusha
 	
 	mov [score], 0
-	mov [keys_num], 0
+	mov [digits_num], 0
 	mov [fail], 0
 	mov [timer], 0
 	mov [fall_delay], 200
@@ -234,9 +225,9 @@ proc reset_vars
 	; Reset the arrays using a loop
 	mov bx, 0
 arr_reset:
-	mov [keys_on+bx], 0
-	mov [keys_x+bx], 0
-	mov [keys_y+bx], 0
+	mov [digits_on+bx], 0
+	mov [digits_x+bx], 0
+	mov [digits_y+bx], 0
 	
 	add bx, 2
 	
@@ -284,18 +275,18 @@ endp speed_calc
 
 
 ;====================================================================
-;   PROC  –  load_random_key - Load a random key to the screen
+;   PROC  –  load_random_digit - Load a random digit to the screen
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS AND VARIABLES: keys_num - inc by 1, prev_x, keys_on, keys_x, keys_y, pic - according to the number loaded
+;	EFFECTED REGISTERS AND VARIABLES: digits_num - inc by 1, prev_x, digits_on, digits_x, digits_y, pic - according to the number loaded
 ; ====================================================================
 
-proc load_random_key
+proc load_random_digit
 	pusha
 	
-	; Check if all the keys are on
+	; Check if all the digits are on
 	mov al, 10
-	cmp [keys_num], al
+	cmp [digits_num], al
 	je after_load
 	
 	; Get random x coordinate
@@ -303,41 +294,41 @@ proc load_random_key
 	call MOR_RANDOM
 	add ax, 20
 	
+	; Check if the x value is too close to the last one and fix it if so
 	call check_x_diff
 	
 	mov cx, ax
 	mov dx, [first_y]
 	
 random:
-	; Get a random key number to load
-	mov ax, 10 ;replace with 36 later
+	; Get a random digit number to load
+	mov ax, 10
 	call MOR_RANDOM
 	
-	; Check if the key is already on screen and get random key again if it is
+	; Check if the digit is already on screen and get random digit again if it is
 	mov bx, ax
 	add bx, bx
-	cmp [keys_on + bx], 1
+	cmp [digits_on + bx], 1
 	je random
 	
-	mov bx, [keys_pics + bx]
+	mov bx, [digits_pics + bx]
 	mov [pic], bl
 	
-	; Save the random key coordinates
+	; Save the random digit coordinates
 	mov bx, ax
 	add bx, bx
-	mov [keys_x + bx], cx
-	mov [keys_y + bx], dx
+	mov [digits_x + bx], cx
+	mov [digits_y + bx], dx
 	
 	; Save the x value for next load
 	mov [prev_x], cx
 	
-	; Change the key index in the keys on array to 1
-	mov [keys_on + bx], 1
-	; mov ah,0
-	; call MOR_PRINT_NUM
-	inc [keys_num]
+	; Change the digit index in the digits on array to 1
+	mov [digits_on + bx], 1
+
+	inc [digits_num]
 	
-	; Load the key
+	; Load the digit
 	mov ax, offset pic
 	call MOR_LOAD_BMP
 
@@ -345,12 +336,12 @@ after_load:
 
 	popa
 	ret
-endp load_random_key
+endp load_random_digit
 
 
 ;====================================================================
-;   PROC  –  check_x_diff - Check if the substracte of the new key and previous one is too small and if so return a fixed x value
-;   IN: ax - the current key x value
+;   PROC  –  check_x_diff - Check if the substracte of the new digit and previous one is too small and if so return a fixed x value
+;   IN: ax - the current digit x value
 ;   OUT: ax - the fixed x value
 ;	EFFECTED REGISTERS AND VARIABLES : ax
 ; ====================================================================
@@ -371,6 +362,7 @@ proc check_x_diff
 	jb add_x
 	jmp after_fix
 	
+	; Check if add to x or to sub x is needed
 add_x:
 	cmp ax, 280
 	ja dec_x
@@ -401,13 +393,13 @@ endp check_x_diff
 
 
 ;====================================================================
-;   PROC  –  keys_fall - make the keys fall
+;   PROC  –  digits_fall - make the digits fall
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS AND VARIABLES : fail - only if the player has failed, counter - by one each loop, keys_x, keys_y, pic - according to the number pressed
+;	EFFECTED REGISTERS AND VARIABLES : fail - only if the player has failed, counter - by one each loop, digits_x, digits_y, pic - according to the number pressed
 ; ====================================================================
 
-proc keys_fall
+proc digits_fall
 	pusha
 	
 	; Init
@@ -416,33 +408,33 @@ fall:
 	mov bx, 0
 	mov bl, [counter]
 	add bx, bx
-	; Move the key index to bx
-	cmp [keys_on + bx], 0
+	; Move the digit index to bx
+	cmp [digits_on + bx], 0
 	je after_fall
 
-	; Load a blank pic to delete the key
-	mov cx, [keys_x + bx]
-	mov dx, [keys_y + bx]
+	; Load a blank pic to delete the digit
+	mov cx, [digits_x + bx]
+	mov dx, [digits_y + bx]
 	
-	mov ax, offset key_del
+	mov ax, offset digit_del
 	call MOR_LOAD_BMP
 	
-	; Increase the key y value for fall effect
+	; Increase the digit y value for fall effect
 	mov ax, 0
 	mov al, [y_jump]
-	add [keys_y + bx], ax
+	add [digits_y + bx], ax
 	
-	; Load the key back but with higher y (affter fall)
-	mov dx, [keys_y + bx]
+	; Load the digit back but with higher y (affter fall)
+	mov dx, [digits_y + bx]
 	
 	mov ax,0
-	mov ax, [keys_pics + bx]
+	mov ax, [digits_pics + bx]
 	mov [pic], al
 	
 	mov ax, offset pic
 	call MOR_LOAD_BMP
 	
-	; Checks if the keys y is in the fail range and if so call game over
+	; Checks if the digits y is in the fail range and if so call game over
 	cmp dx, [y_fail]
 	jae over
 	jmp after_fall
@@ -454,62 +446,66 @@ after_fall:
 	
 	inc [counter]
 	
-	; The loop will run for the amout of keys on screen
-	mov al, 10 ;change to 36
+	; The loop will run for the amout of digits on screen
+	mov al, 10
 	cmp [counter], al
 	jb fall
 	
 
 	popa
 	ret
-endp keys_fall
+endp digits_fall
 
 
 ;====================================================================
-;   PROC  –  check_press - check if the key pressed is on screen and if so deletes it
+;   PROC  –  check_press - check if the digit pressed is on screen and if so deletes it
 ;   IN: NONE
 ;   OUT: NONE
-;	EFFECTED REGISTERS AND VARIABLES: score - inc if the clicked on the number on screen, keys_num - dec if the clicked on the number on screen, keys_on, keys_x, keys_y - according to the number pressed
+;	EFFECTED REGISTERS AND VARIABLES: score - inc if the clicked on the number on screen, digits_num - dec if the clicked on the number on screen, digits_on, digits_x, digits_y - according to the number pressed
 ; ====================================================================
 	proc check_press
 	pusha
-	mov ax, 0
 	
+	mov ax, 0
 	call MOR_GET_KEY
 	
+	; Nothing is pressed
 	cmp al, 0
 	je not_on
 	
+	; A digit which is not a number was pressed
 	cmp al, '0'
 	jb not_on
 	
 	cmp al, '9'
 	ja not_on
 	
-	sub al, 48
+	; Convert the ascii code to the digits
+	sub al, '0'
 	mov ah,0
 	
-	; Check if the key is on the screen
+	; Check if the digit is on the screen
 	mov bx, ax
 	add bx, bx
-	; if wrong click then fail
-	cmp [keys_on + bx], 0
+	
+	; If the digit pressed is not on the screen then GAME OVER
+	cmp [digits_on + bx], 0
 	je check_fail
 	
-	; Load a blank pic to delete the key
-	mov cx, [keys_x + bx]
-	mov dx, [keys_y + bx]
+	; Load a blank pic to delete the digit
+	mov cx, [digits_x + bx]
+	mov dx, [digits_y + bx]
 	
-	mov ax, offset key_del
+	mov ax, offset digit_del
 	call MOR_LOAD_BMP
 	
-	; Change the key on status and details to 0
-	mov [keys_on + bx], 0
-	mov [keys_x + bx], 0
-	mov [keys_y + bx], 0
+	; Change the digit on status and details to 0
+	mov [digits_on + bx], 0
+	mov [digits_x + bx], 0
+	mov [digits_y + bx], 0
 	
-	; Decrease the number of key on screen
-	dec [keys_num]	
+	; Decrease the number of digit on screen
+	dec [digits_num]	
 	
 	; Increase the score
 	inc [score]
@@ -539,7 +535,7 @@ endp check_press
 proc over_proc
 	pusha
 	
-	; Wait a bit before game over screen
+	; Wait a bit before game over screen so the plyer can see what happend
 	; this code is like this to fix the bug that if you press before the game over screen  it skips it
 	mov [timer], 0
 fail_wait:
@@ -551,8 +547,6 @@ fail_wait:
 	
 	cmp [timer], 20
 	jb fail_wait
-
-	; If the player fails and the game is over
 	
 	; Change the screen pic
 	mov ax, offset over_back
@@ -574,6 +568,7 @@ fail_wait:
 	
 game_over:
 	
+	; GAME OVER animation
 	mov ax, offset over_txt
 	call MOR_LOAD_BMP
 	
@@ -586,9 +581,8 @@ game_over:
 	mov ax, 500
 	call MOR_SLEEP
 	
-	; Check if a key was pressed without waiting
 	mov ax, 0
-	
+	; If Q or q is pressed exit the game
 	call MOR_GET_KEY
 	cmp al, 'q'
 	je exit
@@ -596,6 +590,7 @@ game_over:
 	cmp al, 'Q'
 	je exit
 	
+	; If any other digit is pressed play again
 	cmp al, 0
 	je game_over
 	
